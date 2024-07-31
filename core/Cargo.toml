@@ -268,7 +268,7 @@ sha1 = { version = "0.10.6", optional = true }
 sha2 = { version = "0.10", optional = true }
 
 # For http based services.
-reqsign = { version = "0.16", default-features = false, optional = true }
+reqsign = { git="https://github.com/twuebi/reqsign.git", branch="tp/azdls-client-secr", optional = true }
 
 # for services-atomic-server
 atomic_lib = { version = "0.38", optional = true }
