@@ -58,7 +58,25 @@ pub struct AzdlsConfig {
     /// Account name of this backend.
     pub account_name: Option<String>,
     /// Account key of this backend.
+    /// - required for shared_key authentication
     pub account_key: Option<String>,
+    /// client_secret
+    /// The client secret of the service principal.
+    /// - required for client_credentials authentication
+    pub client_secret: Option<String>,
+    /// tenant_id
+    /// The tenant id of the service principal.
+    /// - required for client_credentials authentication
+    pub tenant_id: Option<String>,
+    /// client_id
+    /// The client id of the service principal.
+    /// - required for client_credentials authentication
+    pub client_id: Option<String>,
+    /// authority_host
+    /// The authority host of the service principal.
+    /// - required for client_credentials authentication
+    /// - default value: `https://login.microsoftonline.com`
+    pub authority_host: Option<String>,
 }
 
 impl Debug for AzdlsConfig {
@@ -74,6 +92,18 @@ impl Debug for AzdlsConfig {
         }
         if self.account_key.is_some() {
             ds.field("account_key", &"<redacted>");
+        }
+
+        if self.client_secret.is_some() {
+            ds.field("client_secret", &"<redacted>");
+        }
+
+        if self.tenant_id.is_some() {
+            ds.field("tenant_id", &self.tenant_id);
+        }
+
+        if self.client_id.is_some() {
+            ds.field("client_id", &self.client_id);
         }
 
         ds.finish()
@@ -166,6 +196,58 @@ impl AzdlsBuilder {
         self
     }
 
+    /// Set client_secret of this backend.
+    ///
+    /// - If client_secret is set, we will take user's input first.
+    /// - If not, we will try to load it from environment.
+    /// - required for client_credentials authentication
+    pub fn client_secret(mut self, client_secret: &str) -> Self {
+        if !client_secret.is_empty() {
+            self.config.client_secret = Some(client_secret.to_string());
+        }
+
+        self
+    }
+
+    /// Set tenant_id of this backend.
+    ///
+    /// - If tenant_id is set, we will take user's input first.
+    /// - If not, we will try to load it from environment.
+    /// - required for client_credentials authentication
+    pub fn tenant_id(mut self, tenant_id: &str) -> Self {
+        if !tenant_id.is_empty() {
+            self.config.tenant_id = Some(tenant_id.to_string());
+        }
+
+        self
+    }
+
+    /// Set client_id of this backend.
+    ///
+    /// - If client_id is set, we will take user's input first.
+    /// - If not, we will try to load it from environment.
+    /// - required for client_credentials authentication
+    pub fn client_id(mut self, client_id: &str) -> Self {
+        if !client_id.is_empty() {
+            self.config.client_id = Some(client_id.to_string());
+        }
+
+        self
+    }
+
+    /// Set authority_host of this backend.
+    ///
+    /// - If authority_host is set, we will take user's input first.
+    /// - If not, we will try to load it from environment.
+    /// - default value: `https://login.microsoftonline.com`
+    pub fn authority_host(mut self, authority_host: &str) -> Self {
+        if !authority_host.is_empty() {
+            self.config.authority_host = Some(authority_host.to_string());
+        }
+
+        self
+    }
+
     /// Specify the http client that used by this service.
     ///
     /// # Notes
@@ -198,7 +280,7 @@ impl Builder for AzdlsBuilder {
         debug!("backend use filesystem {}", &filesystem);
 
         let endpoint = match &self.config.endpoint {
-            Some(endpoint) => Ok(endpoint.clone()),
+            Some(endpoint) => Ok(endpoint.clone().trim_end_matches('/').to_string()),
             None => Err(Error::new(ErrorKind::ConfigInvalid, "endpoint is empty")
                 .with_operation("Builder::build")
                 .with_context("service", Scheme::Azdls)),
@@ -222,6 +304,12 @@ impl Builder for AzdlsBuilder {
                 .or_else(|| infer_storage_name_from_endpoint(endpoint.as_str())),
             account_key: self.config.account_key.clone(),
             sas_token: None,
+            client_id: self.config.client_id.clone(),
+            client_secret: self.config.client_secret.clone(),
+            tenant_id: self.config.tenant_id.clone(),
+            authority_host: Some(self.config.authority_host.clone().unwrap_or_else(|| {
+                "https://login.microsoftonline.com".to_string()
+            })),
             ..Default::default()
         };
 
